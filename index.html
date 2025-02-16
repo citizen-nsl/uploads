@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fastify File Upload - Dark Mode</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+            /* สไตล์สำหรับการเลื่อน */
+    .upload-history {
+      max-height: 300px; /* ความสูงสูงสุดของพื้นที่ที่สามารถเลื่อนได้ */
+      overflow-y: auto; /* เปิดใช้การเลื่อนในแนวตั้ง */
+    }
+    </style>
+</head>
+<body class="bg-gray-900 flex items-center justify-center h-screen text-white">
+    <div class="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-lg text-center">
+        <h2 class="text-2xl sm:text-3xl font-semibold">Upload a File</h2>
+        
+        <div class="mt-4">
+            <input type="file" id="fileInput" class="block w-full text-sm text-gray-400
+                file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0
+                file:text-sm file:font-semibold file:bg-gray-700 file:text-gray-200 
+                hover:file:bg-gray-600 cursor-pointer">
+        </div>
+        
+        <button id="uploadBtn" class="mt-4 bg-blue-600 text-white py-2 px-4 rounded-lg 
+                hover:bg-blue-500 transition duration-300 w-full sm:w-auto">
+            Upload
+        </button>
+
+        <!-- History Table -->
+        <div id="historyContainer" class="mt-6 ">
+            <h3 class="text-lg sm:text-xl font-semibold ">Upload History</h3>
+            <table class="w-full mt-2 border-collapse border border-gray-600 upload-history space-y-4">
+                <thead class="">
+                    <tr class="bg-gray-700 ">
+                        <th class="border border-gray-600 px-4 py-2 text-xs sm:text-sm">#</th>
+                        <th class="border border-gray-600 px-4 py-2 text-xs sm:text-sm">File URL</th>
+                        <th class="border border-gray-600 px-4 py-2 text-xs sm:text-sm">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="historyList"></tbody>
+            </table>
+
+            <button id="clearHistoryBtn" class="mt-3 bg-red-600 text-white py-1 px-3 rounded-lg 
+                hover:bg-red-500 transition duration-300 sm:w-auto w-full">
+                Clear History
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            loadHistory(); // โหลด History ทันทีที่เปิดหน้า
+        });
+
+        document.getElementById("uploadBtn").addEventListener("click", async (event) => {
+            event.preventDefault(); // ป้องกันการรีเฟรช
+
+            const fileInput = document.getElementById("fileInput");
+            if (!fileInput.files.length) {
+                alert("Please select a file");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            try {
+                const res = await fetch("http://localhost:3000/upload", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                const data = await res.json();
+                console.log("Uploaded File URL:", data.fileUrl);
+
+                addToHistory(data.fileUrl);
+            } catch (error) {
+                console.error("Upload error:", error);
+                alert("Upload failed. Please try again.");
+            }
+        });
+
+        function addToHistory(url) {
+            let history = JSON.parse(localStorage.getItem("uploadHistory")) || [];
+            history.unshift(url); // เพิ่มไฟล์ใหม่ไว้ด้านบนสุด
+            localStorage.setItem("uploadHistory", JSON.stringify(history));
+
+            loadHistory(); // โหลดใหม่เพื่ออัปเดตรายการ
+        }
+
+        function loadHistory() {
+            let history = JSON.parse(localStorage.getItem("uploadHistory")) || [];
+            const historyList = document.getElementById("historyList");
+
+            historyList.innerHTML = ""; // เคลียร์รายการเก่า
+            history.forEach((url, index) => {
+                const row = document.createElement("tr");
+                row.className = "bg-gray-800";
+                row.innerHTML = `
+                    <td class="border border-gray-600 px-4 py-2 text-center text-xs sm:text-sm">${index + 1}</td>
+                    <td class="border border-gray-600 px-4 py-2 text-xs sm:text-sm">
+                        <a href="${url}" target="_blank" class="text-blue-400 underline">${url}</a>
+                    </td>
+                    <td class="border border-gray-600 px-4 py-2 text-center text-xs sm:text-sm">
+                        <button class="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-400" 
+                                onclick="deleteHistoryItem(${index})">
+                            🗑
+                        </button>
+                    </td>
+                `;
+                historyList.appendChild(row);
+            });
+        }
+
+        function deleteHistoryItem(index) {
+            let history = JSON.parse(localStorage.getItem("uploadHistory")) || [];
+            history.splice(index, 1); // ลบรายการที่เลือก
+            localStorage.setItem("uploadHistory", JSON.stringify(history));
+
+            loadHistory(); // โหลดใหม่เพื่ออัปเดตรายการ
+        }
+
+        document.getElementById("clearHistoryBtn").addEventListener("click", () => {
+            localStorage.removeItem("uploadHistory");
+            loadHistory();
+        });
+    </script>
+</body>
+</html>
